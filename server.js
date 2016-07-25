@@ -30,7 +30,7 @@ function doRealFetch() {
 }
 
 function doDiskFetch() {
-	var testHTML = fs.readFileSync(__dirname + '/test/testpage/naantali2015.html', 'utf8');
+	var testHTML = fs.readFileSync(__dirname + '/test/testpage/hof2016.html', 'utf8');
 
 	parseStats(testHTML, {
     	exclude: ['boxDiagram'],

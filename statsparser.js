@@ -186,7 +186,7 @@ function processRounds(rounds) {
 	console.log("ROUNDS")
 	console.log(rounds)
 
-	return _.map(rounds, function(roundScore) {
+	return _.compact(_.map(rounds, function(roundScore) {
 
 		// Split by either b or w
 		var wSplit = _.split(roundScore, 'w');
@@ -203,10 +203,13 @@ function processRounds(rounds) {
 		} else if (bSplit.length === 2 && wSplit.length < 2) {
 			console.log("B sep");
 			return {opponent: bSplit[0], color: 'b', score: bSplit[1]}
+		} else {
+			// Its probably point or 1/2 point from free round
+			return null;
 		}
 
-		throw new CrossTableParseError(roundScore);
-	});
+		//throw new CrossTableParseError(roundScore);
+	}));
 }
 
 function getRoundsInterval(header) {
