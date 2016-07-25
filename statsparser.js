@@ -10,6 +10,7 @@ var ExecutorMissingError = require('./errors/executor-missing');
 var CrossTableParseError = require('./errors/tableparse-error');
 // Other deps
 
+/*
 var allMethods = [
 	'longestStreaks',
 	'boxDiagrams',
@@ -17,6 +18,7 @@ var allMethods = [
 	'eloComparisons',
 	'bestUpsets'
 ]
+*/
 
 module.exports = function(crosstableText, options) {
 
@@ -29,16 +31,18 @@ module.exports = function(crosstableText, options) {
 		}
 	*/
 
+	var executorNames = _.keys(executors);
 
-	var toBeExecuted = _.difference(allMethods, options.exclude);
+	
 
 
 	var crossTable = processCrosstableText(crosstableText);
-	console.log("Cross table")
+	//console.log("Cross table")
 	//console.log(crossTable);
 
 	return _
-	.chain(allMethods)
+	.chain(executorNames)
+	// Exclude those executors client does not care about.
 	.difference(options.exclude)
 	.map(function(methodName) {
 		if (_.has(executors, methodName)) {
@@ -70,7 +74,7 @@ function processCrosstableText(text) {
 	var parser = new htmlparser.Parser({
 	    onopentag: function(name, attribs){
 	        if(name === "table" && attribs['class'] === "CRs1"){
-	            console.log("CROSSTABLE STARTS");
+	            //console.log("CROSSTABLE STARTS");
 	            currentlyOnCrossTable = true;
 	        } else if (name === "tr") {
 	        	if (!currentlyOnCrossTable) return;
@@ -83,7 +87,7 @@ function processCrosstableText(text) {
 	        	} else if (className.indexOf('CRng') !== -1 || className.indexOf('CRg') !== -1) {
 	        		currentTr = 'row';
 		        	currRowCount++;
-		        	//console.log("Curr row count: " + currRowCount);
+		        	////console.log("Curr row count: " + currRowCount);
 		        	collecting.rows[currRowCount] = [];	        		
 	        	}
 
@@ -96,7 +100,7 @@ function processCrosstableText(text) {
 	        		collecting.header[currTdCount] = '';
 
 	        	} else if (currentTr === 'row') {
-	        		console.log("row count is: " + currRowCount);
+	        		//console.log("row count is: " + currRowCount);
 	        		collecting.rows[currRowCount][currTdCount] = '';
 	        	}
 
@@ -110,14 +114,14 @@ function processCrosstableText(text) {
 	    	if (currentTr === 'header') {
 	    		collecting.header[currTdCount] = text;
 	    	} else if (currentTr === 'row') {
-	    		//console.log("PUSHING NON-HEADER: " + text);
+	    		////console.log("PUSHING NON-HEADER: " + text);
 	    		collecting.rows[currRowCount][currTdCount] = text;
 	    	}
 	
 	    },
 	    onclosetag: function(tagname){
 	        if(tagname === "table"){
-	        	console.log("TABLE ENDS");
+	        	//console.log("TABLE ENDS");
 	            currentlyOnCrossTable = false;
 	        } else if (tagname === 'td') {
 	        	insideTd = false;
@@ -136,18 +140,18 @@ function processCrosstableText(text) {
 	
 	};
 
-	console.log(collecting.rows)
+	//console.log(collecting.rows)
 
 	_
 	.chain(collecting.rows)
 	.map(function(row) {
-		console.log("ROW SPINNING")
-		console.log(row);
+		//console.log("ROW SPINNING")
+		//console.log(row);
 		return processRow(row, crosstable.roundsIntervalInHeader);
 	})
 	.forEach(function(row) {
-		console.log("ROW IN FOREACH")
-		console.log(row);
+		//console.log("ROW IN FOREACH")
+		//console.log(row);
 		crosstable[row.playerInfo[0]] = row;
 	}).value();
 
@@ -161,15 +165,15 @@ function processRow(row, roundsInterval) {
 	// Use header to find out the structure of the row
 	// For now we just hardcode it in
 
-	console.log("ROW IS: " + row);
-	console.log(row);
+	//console.log("ROW IS: " + row);
+	//console.log(row);
 
 	var playerStuff = _.take(row, roundsInterval[0]);
 	var rounds = _.slice(row, roundsInterval[0], roundsInterval[1] + 1);
 	var scores = _.slice(row, roundsInterval[1] + 1);
 
-	console.log(row);
-	console.log(rounds);
+	//console.log(row);
+	//console.log(rounds);
 
 	return {
 		playerInfo: playerStuff,
@@ -183,8 +187,8 @@ function processRow(row, roundsInterval) {
 
 function processRounds(rounds) {
 
-	console.log("ROUNDS")
-	console.log(rounds)
+	//console.log("ROUNDS")
+	//console.log(rounds)
 
 	return _.compact(_.map(rounds, function(roundScore) {
 
@@ -192,16 +196,16 @@ function processRounds(rounds) {
 		var wSplit = _.split(roundScore, 'w');
 		var bSplit = _.split(roundScore, 'b');
 
-		console.log(wSplit);
-		console.log(" vs. split ");
-		console.log(bSplit);
+		//console.log(wSplit);
+		//console.log(" vs. split ");
+		//console.log(bSplit);
 
 		if (wSplit.length === 2 && bSplit.length < 2) {
-			console.log("W sep")
+			//console.log("W sep")
 		
 			return {opponent: wSplit[0], color: 'w', score: wSplit[1]}
 		} else if (bSplit.length === 2 && wSplit.length < 2) {
-			console.log("B sep");
+			//console.log("B sep");
 			return {opponent: bSplit[0], color: 'b', score: bSplit[1]}
 		} else {
 			// Its probably point or 1/2 point from free round
@@ -214,7 +218,7 @@ function processRounds(rounds) {
 
 function getRoundsInterval(header) {
 
-	console.log(header);
+	//console.log(header);
 
 
 	var firstRoundIdx = header.indexOf('1.Rd');
@@ -227,7 +231,7 @@ function getRoundsInterval(header) {
 		return token.indexOf('.Rd') !== -1;
 	})
 
-	console.log([firstRoundIdx, firstRoundIdx + rounds.length - 1])
+	//console.log([firstRoundIdx, firstRoundIdx + rounds.length - 1])
 
 
 	return [firstRoundIdx, firstRoundIdx + rounds.length - 1];

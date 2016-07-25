@@ -9,31 +9,31 @@ module.exports = function(crossTable) {
 }
 
 function getAllWinsWithEloDifferences(crossTable) {
-	console.log("Cross table in bestUpsets");
-	console.log("---------------")
-	console.log(crossTable);
-	console.log("---------------")
+	//console.log("Cross table in bestUpsets");
+	//console.log("---------------")
+	//console.log(crossTable);
+	//console.log("---------------")
 
 	var allWins = [];
 
 	_.forOwn(
 		_.omit(crossTable, ['header', 'roundsIntervalInHeader']), 
 		function(resultsObj, playerID) {
-			console.log("Results obnj");
-			console.log(resultsObj);
-			console.log("Calcling wins for: " + playerID);
-			console.log(resultsObj.rounds.length);
+			//console.log("Results obnj");
+			//console.log(resultsObj);
+			//console.log("Calcling wins for: " + playerID);
+			//console.log(resultsObj.rounds.length);
 			var rounds = resultsObj.rounds;
 			var ownElo = getPlayerElo(playerID, crossTable);
 
 			var allWinsForPlayer = _
 			.chain(rounds)
 			.map(function(round) {
-				console.log("Score: " + round.score);
-				console.log(round)
+				//console.log("Score: " + round.score);
+				//console.log(round)
 				if (round.score !== '1') return null;
 				var opponentElo = getPlayerElo(round.opponent, crossTable);
-				console.log("Elo diff: " + (opponentElo - ownElo))
+				//console.log("Elo diff: " + (opponentElo - ownElo))
 				return {eloDiff: opponentElo - ownElo, winner: playerID, loser: round.opponent};
 			})
 			.compact()
@@ -44,7 +44,7 @@ function getAllWinsWithEloDifferences(crossTable) {
 			
 		}
 	);
-	console.log(allWins);
+	//console.log(allWins);
 
 
 	var topFive = _
@@ -62,17 +62,17 @@ function getAllWinsWithEloDifferences(crossTable) {
 	})
 	.value();
 
-	console.log(topFive);
+	//console.log(topFive);
 
 	return {executor: NAME, res: topFive};
 }
 
 function getPlayerElo(id, crossTable) {
 
-	console.log(_.keys(crossTable))
+	//console.log(_.keys(crossTable))
 
-	//console.log(crossTable);
-	console.log("ID is: " + id);
+	////console.log(crossTable);
+	//console.log("ID is: " + id);
 
 
 	if (!_.has(crossTable, id)) throw "ID not found crosstable: " + id;
