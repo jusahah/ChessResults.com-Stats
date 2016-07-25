@@ -9,19 +9,39 @@ var stats = require('./statsparser');
 var ExecutorMissingError = require('./errors/executor-missing');
 
 // Load test page
-var testHTML = fs.readFileSync(__dirname + '/test/testpage/naantali2015.html', 'utf8');
 
-function processHTML(html) {
 
-	stats(testHTML, {
-		exclude: ['boxDiagrams2']
+function processHTMLTest(html) {
+	// Returns array of promises
+	return stats(testHTML, {
+		exclude: ['boxDiagrams2'],
+		ignoreMissingExecutors: true
 	});
 }
 
+function processHTML(html, parseOptions) {
 
-Promise.try(function() {
-	processHTML(testHTML);
-})
-.catch(ExecutorMissingError, function(err) {
-	console.log(err.toString());
-})
+	// Ah, beautiful
+	return Promise.try(function() {
+		// Returns array of promises
+		return stats(html, parseOptions);
+	})
+	.reduce(function(collector, executorResult) {
+		// Turn into object
+		collector[executorResult.executor] = executorResult.res;
+		return collector;
+	}, {})
+	.then(function(resultsObj) {
+		console.log("RESULTS OBJECT READY");
+		return resultsObj;
+	})
+	// Catch if executor was missing and error not suppressed by caller
+	.catch(ExecutorMissingError, function(err) {
+		console.log(err.toString());
+	})
+	// Catch all not specified, let crash.
+
+}
+
+module.exports = processHTML;
+

@@ -7,14 +7,15 @@ var executors = require('./executors');
 
 // Errors
 var ExecutorMissingError = require('./errors/executor-missing');
-
+var CrossTableParseError = require('./errors/tableparse-error');
 // Other deps
 
 var allMethods = [
 	'longestStreaks',
 	'boxDiagrams',
 	'countryComparisons',
-	'eloComparisons'
+	'eloComparisons',
+	'bestUpsets'
 ]
 
 module.exports = function(crosstableText, options) {
@@ -33,17 +34,20 @@ module.exports = function(crosstableText, options) {
 
 
 	var crossTable = processCrosstableText(crosstableText);
-	console.log(crossTable);
+	console.log("Cross table")
+	//console.log(crossTable);
 
 	return _
 	.chain(allMethods)
 	.difference(options.exclude)
-	.zipObject() 
-	.mapValues(function(value, methodName) {
+	.map(function(methodName) {
 		if (_.has(executors, methodName)) {
+			// Returns Promise!!
 			return executors[methodName](crossTable);
 		}
-
+		if (options.ignoreMissingExecutors) {
+			return Promise.resolve({executor: methodName, res: null});
+		}
 		// Not found
 		throw new ExecutorMissingError(methodName);
 	}).value();
@@ -56,6 +60,7 @@ function processCrosstableText(text) {
 	var insideTd;
 
 	var currRowCount = -1;
+	var currTdCount  = -1;
 
 	var collecting = {
 		header: [],
@@ -70,10 +75,12 @@ function processCrosstableText(text) {
 	        } else if (name === "tr") {
 	        	if (!currentlyOnCrossTable) return;
 
-	        	if (attribs['class'] === 'CRng1b') {
+	        	var className = attribs['class'];
+
+	        	if (className.indexOf('CRng1b') !== -1 || className.indexOf('CRg1b') !== -1) {
 	        		// Header row
 	        		currentTr = 'header';
-	        	} else if (_.truncate(attribs['class'], {length: 4, omission: ''} === 'CRng')) {
+	        	} else if (className.indexOf('CRng') !== -1 || className.indexOf('CRg') !== -1) {
 	        		currentTr = 'row';
 		        	currRowCount++;
 		        	//console.log("Curr row count: " + currRowCount);
@@ -83,6 +90,15 @@ function processCrosstableText(text) {
 	        } else if (name === "td") {
 	        	if (!currentTr) return;
 	        	insideTd = true;
+	        	currTdCount++;
+
+	        	if (currentTr === 'header') {
+	        		collecting.header[currTdCount] = '';
+
+	        	} else if (currentTr === 'row') {
+	        		console.log("row count is: " + currRowCount);
+	        		collecting.rows[currRowCount][currTdCount] = '';
+	        	}
 
 	        }
 	    },
@@ -92,10 +108,10 @@ function processCrosstableText(text) {
 	    	text = _.trim(text);
 
 	    	if (currentTr === 'header') {
-	    		collecting.header.push(text);
+	    		collecting.header[currTdCount] = text;
 	    	} else if (currentTr === 'row') {
-	    		console.log("PUSHING NON-HEADER: " + text);
-	    		collecting.rows[currRowCount].push(text);
+	    		//console.log("PUSHING NON-HEADER: " + text);
+	    		collecting.rows[currRowCount][currTdCount] = text;
 	    	}
 	
 	    },
@@ -107,6 +123,7 @@ function processCrosstableText(text) {
 	        	insideTd = false;
 	        } else if (tagname === 'tr') {
 	        	currentTr = null;
+	        	currTdCount = -1;
 	        }
 	    }
 	}, {decodeEntities: false});
@@ -114,13 +131,105 @@ function processCrosstableText(text) {
 	parser.end();
 
 	var crosstable = {
-		'header' : collecting.header
-
+		header : collecting.header,
+		roundsIntervalInHeader: getRoundsInterval(collecting.header)
+	
 	};
 
-	_.forEach(collecting.rows, function(row) {
-		crosstable[row[0]] = row;
-	});
+	console.log(collecting.rows)
+
+	_
+	.chain(collecting.rows)
+	.map(function(row) {
+		console.log("ROW SPINNING")
+		console.log(row);
+		return processRow(row, crosstable.roundsIntervalInHeader);
+	})
+	.forEach(function(row) {
+		console.log("ROW IN FOREACH")
+		console.log(row);
+		crosstable[row.playerInfo[0]] = row;
+	}).value();
+
+
 
 	return crosstable;
+}
+
+
+function processRow(row, roundsInterval) {
+	// Use header to find out the structure of the row
+	// For now we just hardcode it in
+
+	console.log("ROW IS: " + row);
+	console.log(row);
+
+	var playerStuff = _.take(row, roundsInterval[0]);
+	var rounds = _.slice(row, roundsInterval[0], roundsInterval[1] + 1);
+	var scores = _.slice(row, roundsInterval[1] + 1);
+
+	console.log(row);
+	console.log(rounds);
+
+	return {
+		playerInfo: playerStuff,
+		rounds: processRounds(rounds),
+		scores: scores
+	}
+
+	return _.concat(playerStuff, processRounds(rounds), scores);
+
+}
+
+function processRounds(rounds) {
+
+	console.log("ROUNDS")
+	console.log(rounds)
+
+	return _.map(rounds, function(roundScore) {
+
+		// Split by either b or w
+		var wSplit = _.split(roundScore, 'w');
+		var bSplit = _.split(roundScore, 'b');
+
+		console.log(wSplit);
+		console.log(" vs. split ");
+		console.log(bSplit);
+
+		if (wSplit.length === 2 && bSplit.length < 2) {
+			console.log("W sep")
+		
+			return {opponent: wSplit[0], color: 'w', score: wSplit[1]}
+		} else if (bSplit.length === 2 && wSplit.length < 2) {
+			console.log("B sep");
+			return {opponent: bSplit[0], color: 'b', score: bSplit[1]}
+		}
+
+		throw new CrossTableParseError(roundScore);
+	});
+}
+
+function getRoundsInterval(header) {
+
+	console.log(header);
+
+
+	var firstRoundIdx = header.indexOf('1.Rd');
+
+	if (firstRoundIdx === -1) throw "First round token not found in table header!";
+
+	var restFromFirst = _.slice(header, firstRoundIdx);
+
+	var rounds = _.takeWhile(restFromFirst, function(token) { 
+		return token.indexOf('.Rd') !== -1;
+	})
+
+	console.log([firstRoundIdx, firstRoundIdx + rounds.length - 1])
+
+
+	return [firstRoundIdx, firstRoundIdx + rounds.length - 1];
+
+
+
+
 }

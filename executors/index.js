@@ -1,5 +1,7 @@
+
 module.exports = {
 	countryComparisons: require('./countryComparison'),
-	eloComparisons: function() {}, //require('./eloComparison'),
-	longestStreaks: function() {}, //require('./longestStreaks')
+	eloComparisons: require('./eloComparison'),
+	longestStreaks: require('./longestStreaks'),
+	bestUpsets: require('./bestUpsets')
 }
