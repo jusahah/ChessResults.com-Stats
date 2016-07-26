@@ -134,6 +134,9 @@ function processCrosstableText(text) {
 	parser.write(text);
 	parser.end();
 
+	console.log(collecting.header);
+
+
 	var crosstable = {
 		header : collecting.header,
 		roundsIntervalInHeader: getRoundsInterval(collecting.header)
@@ -147,11 +150,12 @@ function processCrosstableText(text) {
 	.map(function(row) {
 		//console.log("ROW SPINNING")
 		//console.log(row);
-		return processRow(row, crosstable.roundsIntervalInHeader);
+		return processRow(row, crosstable.header, crosstable.roundsIntervalInHeader);
 	})
 	.forEach(function(row) {
 		//console.log("ROW IN FOREACH")
-		//console.log(row);
+		console.log(row);
+	
 		crosstable[row.playerInfo[0]] = row;
 	}).value();
 
@@ -161,21 +165,25 @@ function processCrosstableText(text) {
 }
 
 
-function processRow(row, roundsInterval) {
+
+function processRow(row, header, roundsInterval) {
 	// Use header to find out the structure of the row
 	// For now we just hardcode it in
 
 	//console.log("ROW IS: " + row);
-	//console.log(row);
+	console.log(header);
 
 	var playerStuff = _.take(row, roundsInterval[0]);
 	var rounds = _.slice(row, roundsInterval[0], roundsInterval[1] + 1);
 	var scores = _.slice(row, roundsInterval[1] + 1);
 
+	var rowObj = _.zipObject(header, row);
+
 	//console.log(row);
 	//console.log(rounds);
 
 	return {
+		rowObj: rowObj,
 		playerInfo: playerStuff,
 		rounds: processRounds(rounds),
 		scores: scores
